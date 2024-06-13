@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensor Data</title>
+  <!-- Load Chart.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    table {
+      width: 50%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    th,
+    td {
+      border: 1px solid #dddddd;
+      padding: 8px;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    .chart-container {
+      width: 80%;
+      margin: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <center>
+    <h2>Sensor Data</h2>
+  </center>
+  <!-- Display table of sensor data -->
+  <table id="sensorDataTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Temperature (C)</th>
+        <th>Humidity (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+
+  <!-- Graphs for Temperature and Humidity -->
+  <div class="chart-container">
+    <canvas id="temperatureChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="humidityChart"></canvas>
+  </div>
+
+  <script>
+    // Initialize Temperature and Humidity Charts
+    var tempCtx = document.getElementById('temperatureChart').getContext('2d');
+    var temperatureChart = new Chart(tempCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Temperature (C)',
+          data: [],
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          xAxes: [{
+            type: 'time',
+            time: {
+              unit: 'minute'
+            },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          }],
+          yAxes: [{
+            ticks: {
+              beginAtZero: true
+            }
+          }]
+        }
+      }
+    });
+
+    var humCtx = document.getElementById('humidityChart').getContext('2d');
+    var humidityChart = new Chart(humCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Humidity (%)',
+          data: [],
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          xAxes: [{
+            type: 'time',
+            time: {
+              unit: 'minute'
+            },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 10
+            }
+          }],
+          yAxes: [{
+            ticks: {
+              beginAtZero: true
+            }
+          }]
+        }
+      }
+    });
+
+    // Function to fetch data from PHP and update the table and charts
+    function fetchDataAndDisplay() {
+      fetch('fetchdata.php')
+        .then(response => response.json())
+        .then(data => {
+          // Sort data by date and time
+          data = data.sort((a, b) => {
+            return new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time);
+          });
+
+          // Get the latest 25 records
+          const latestData = data.slice(-25);
+
+          // Update table
+          var tableBody = document.querySelector('#sensorDataTable tbody');
+          tableBody.innerHTML = '';
+          JSON.parse(JSON.stringify(latestData)).reverse().forEach(item => {
+            var row = `<tr>
+                        <td>${item.id}</td>
+                        <td>${item.date}</td>
+                        <td>${item.time}</td>
+                        <td>${item.temperature}</td>
+                        <td>${item.humidity}</td>
+                      </tr>`;
+            tableBody.innerHTML += row;
+          });
+
+          // Prepare data for charts
+          var dates = latestData.map(item => item.date + " " + item.time);
+          var temperatures = latestData.map(item => item.temperature);
+          var humidities = latestData.map(item => item.humidity);
+
+          // Update Temperature Chart
+          temperatureChart.data.labels = dates;
+          temperatureChart.data.datasets[0].data = temperatures;
+          temperatureChart.update();
+
+          // Update Humidity Chart
+          humidityChart.data.labels = dates;
+          humidityChart.data.datasets[0].data = humidities;
+          humidityChart.update();
+        })
+        .catch(error => console.error('Error fetching data:', error));
+    }
+
+    // Call the function to fetch data and display on page load
+    fetchDataAndDisplay();
+
+    // Refresh data every 10 seconds
+    setInterval(fetchDataAndDisplay, 10000);
+  </script>
+</body>
+
+</html>
